@@ -450,6 +450,8 @@ int reg_get_crt_max_contacts(void)
  */
 static inline int insert_contacts(struct sip_msg* _m, udomain_t* _d, str* _a, int _use_regid)
 {
+	LM_DBG("insert_contacts\n");
+
 	ucontact_info_t* ci;
 	urecord_t* r = NULL;
 	ucontact_t* c;
@@ -482,7 +484,9 @@ static inline int insert_contacts(struct sip_msg* _m, udomain_t* _d, str* _a, in
 	maxc = reg_get_crt_max_contacts();
 	for( num=0,r=0,ci=0 ; _c ; _c = get_next_contact(_c) ) {
 		/* calculate expires */
+		LM_DBG("before calc_contact_expires: %d\n", expires);
 		calc_contact_expires(_m, _c->expires, &expires);
+		LM_DBG("after calc_contact_expires: %d\n", expires);
 		/* Skip contacts with zero expires */
 		if (expires == 0)
 			continue;
@@ -595,6 +599,7 @@ static int test_max_contacts(struct sip_msg* _m, urecord_t* _r, contact_t* _c,
 		calc_contact_expires(_m, _c->expires, &e);
 
 		ret = ul.get_ucontact_by_instance( _r, &_c->uri, ci, &cont);
+		LM_DBG("ret: %d e: %d\n", ret, e);
 		if (ret==-1) {
 			LM_ERR("invalid cseq for aor <%.*s>\n",_r->aor.len,_r->aor.s);
 			rerrno = R_INV_CSEQ;
@@ -634,6 +639,8 @@ static int test_max_contacts(struct sip_msg* _m, urecord_t* _r, contact_t* _c,
  */
 static inline int update_contacts(struct sip_msg* _m, urecord_t* _r, int _mode, int _use_regid)
 {
+	LM_DBG("update_contacts\n");
+
 	ucontact_info_t *ci;
 	ucontact_t *c, *ptr, *ptr0;
 	int expires, ret, updated;
@@ -679,7 +686,9 @@ static inline int update_contacts(struct sip_msg* _m, urecord_t* _r, int _mode, 
 	updated=0;
 	for( ; _c ; _c = get_next_contact(_c) ) {
 		/* calculate expires */
-		calc_contact_expires(_m, _c->expires, &expires);
+                LM_DBG("before calc_contact_expires: %d\n", expires);
+                calc_contact_expires(_m, _c->expires, &expires);
+                LM_DBG("after calc_contact_expires: %d\n", expires);
 
 		/* pack the contact info */
 		if ( (ci=pack_ci( 0, _c, expires, 0, _use_regid))==0 ) {
@@ -700,6 +709,8 @@ static inline int update_contacts(struct sip_msg* _m, urecord_t* _r, int _mode, 
 		}
 
 		if ( ret > 0 ) {
+			LM_DBG("Contact not found. Expires=%d\n", expires);
+
 			/* Contact not found -> expired? */
 			if (expires==0)
 				continue;
@@ -723,6 +734,7 @@ static inline int update_contacts(struct sip_msg* _m, urecord_t* _r, int _mode, 
 				updated=1;
 			}
 		} else {
+			LM_DBG("Contact found. Expires:%d c.expires: %d mem_only: %d VALID_CONTACT: %d\n", expires, c->expires, mem_only, VALID_CONTACT(c, act_time));
 			/* Contact found */
 			if (expires == 0) {
 				/* it's expired */
@@ -742,6 +754,7 @@ static inline int update_contacts(struct sip_msg* _m, urecord_t* _r, int _mode, 
 				/* do update */
 				if(_mode)
 				{
+					LM_DBG("Deleting...\n");
 					ptr=_r->contacts;
 					while(ptr)
 					{
@@ -758,6 +771,7 @@ static inline int update_contacts(struct sip_msg* _m, urecord_t* _r, int _mode, 
 						(ci->callid->len != c->callid.len ||
 						strncmp(ci->callid->s, c->callid.s, ci->callid->len) != 0))
 				{
+					LM_DBG("Changed call-id detected\n");
 					ptr = _r->contacts;
 					while (ptr)
 					{
@@ -771,6 +785,7 @@ static inline int update_contacts(struct sip_msg* _m, urecord_t* _r, int _mode, 
 					}
 					updated = 1;
 				}
+				LM_DBG("Updating contact...\n");
 				if (ul.update_ucontact(_r, c, ci) < 0) {
 					rerrno = R_UL_UPD_C;
 					LM_ERR("failed to update contact\n");
@@ -805,9 +820,10 @@ static inline int update_contacts(struct sip_msg* _m, urecord_t* _r, int _mode, 
 		/*force_tcp_conn_lifetime( &_m->rcv , e_max + 10 );*/
 	}
 #endif
-
+	LM_DBG("rc: %d <--\n", rc);
 	return rc;
 error:
+	LM_DBG("-1 <--\n");
 	return -1;
 }
 
@@ -819,22 +835,28 @@ error:
 static inline int add_contacts(struct sip_msg* _m, udomain_t* _d,
 		str* _a, int _mode, int _use_regid)
 {
+	LM_DBG("->\n");
+
 	int res;
 	int ret;
 	urecord_t* r;
 	sip_uri_t *u;
 
 	u = parse_to_uri(_m);
-	if(u==NULL)
+	if(u==NULL) {
+		LM_DBG("<- -2 (1)\n");
 		return -2;
+	}
 
 	ret = 0;
 	ul.lock_udomain(_d, _a);
 	res = ul.get_urecord(_d, _a, &r);
+	LM_DBG("res: %d\n", res);
 	if (res < 0) {
 		rerrno = R_UL_GET_R;
 		LM_ERR("failed to retrieve record from usrloc\n");
 		ul.unlock_udomain(_d, _a);
+		LM_DBG("<- -2 (2)\n");
 		return -2;
 	}
 
@@ -843,6 +865,7 @@ static inline int add_contacts(struct sip_msg* _m, udomain_t* _d,
 			build_contact(_m, r->contacts, &u->host);
 			ul.release_urecord(r);
 			ul.unlock_udomain(_d, _a);
+			LM_DBG("<- -3\n");
 			return -3;
 		}
 		build_contact(_m, r->contacts, &u->host);
@@ -850,11 +873,13 @@ static inline int add_contacts(struct sip_msg* _m, udomain_t* _d,
 	} else {
 		if (insert_contacts(_m, _d, _a, _use_regid) < 0) {
 			ul.unlock_udomain(_d, _a);
+			LM_DBG("<- -4\n");
 			return -4;
 		}
 		ret = 1;
 	}
 	ul.unlock_udomain(_d, _a);
+	LM_DBG("<- ret: %d\n", ret);
 	return ret;
 }
 
@@ -1015,6 +1040,8 @@ int unregister(struct sip_msg* _m, udomain_t* _d, str* _uri, str *_ruid)
 	urecord_t *r;
 	ucontact_t *c;
 	int res;
+
+        LM_WARN("SCDEBUG: _uri: %.*s _ruid: %.*s\n", _uri->len, _uri->s, _ruid->len, _ruid->s);
 
 	if (_ruid == NULL) {
 		/* No ruid provided - remove all contacts for aor */

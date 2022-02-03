@@ -1275,6 +1275,7 @@ static enum rps t_should_relay_response( struct cell *Trans , int new_code,
 	/* no final response sent yet */
 	/* negative replies subject to fork picking */
 	if (new_code >=300 ) {
+		DBG("DEBUG: new_code >= 300\n");
 
 		Trans->uac[branch].last_received=new_code;
 
@@ -1283,6 +1284,7 @@ static enum rps t_should_relay_response( struct cell *Trans , int new_code,
 		 * save of the final reply per branch */
 		if (unlikely(has_tran_tmcbs( Trans, TMCB_ON_BRANCH_FAILURE_RO|TMCB_ON_BRANCH_FAILURE)
 						|| (Trans->uac[branch].on_branch_failure) )) {
+			DBG("DEBUG: ==== 1 ====\n");
 			Trans->uac[branch].reply = reply;
 			extra_flags=
 				((Trans->uac[branch].request.flags & F_RB_TIMEOUT)?
@@ -1303,6 +1305,7 @@ static enum rps t_should_relay_response( struct cell *Trans , int new_code,
 		/* if all_final return lowest */
 		picked_branch=t_pick_branch(branch,new_code, Trans, &picked_code);
 		if (picked_branch==-2) { /* branches open yet */
+                        DBG("DEBUG: ==== 2 ====\n");
 			*should_store=1;
 			*should_relay=-1;
 			if (new_code>=600 && new_code<=699){
@@ -1323,6 +1326,13 @@ static enum rps t_should_relay_response( struct cell *Trans , int new_code,
 			goto error;
 		}
 
+                DBG("DEBUG: ==== nr_of_outgoings: %d ====\n", Trans->nr_of_outgoings);
+
+		int index;
+		for (index=0;index<Trans->nr_of_outgoings;index++) {
+			DBG("DEBUG: === outgoing %d: %.*s\n", index, Trans->uac[index].ruid.len, Trans->uac[index].ruid.s);
+		}
+
 		/* no more pending branches -- try if that changes after
 		   a callback; save branch count to be able to determine
 		   later if new branches were initiated */
@@ -1340,6 +1350,7 @@ static enum rps t_should_relay_response( struct cell *Trans , int new_code,
 		/* run ON_FAILURE handlers ( route and callbacks) */
 		if (unlikely(has_tran_tmcbs( Trans, TMCB_ON_FAILURE_RO|TMCB_ON_FAILURE)
 						|| Trans->uac[picked_branch].on_failure )) {
+                        DBG("DEBUG: ==== 3 ====\n");
 			extra_flags=
 				((Trans->uac[picked_branch].request.flags & F_RB_TIMEOUT)?
 							FL_TIMEOUT:0) | 
@@ -1351,6 +1362,7 @@ static enum rps t_should_relay_response( struct cell *Trans , int new_code,
 			if (unlikely((drop_replies==3 && branch_cnt<Trans->nr_of_outgoings) ||
 						         (drop_replies!=0 && drop_replies!=3))
 					) {
+	                        DBG("DEBUG: ==== 4 (drop_replies: %d) ====\n", drop_replies);
 				/* drop all the replies that we have already saved */
 				i = 0;
 				if(drop_replies==2)
@@ -1390,6 +1402,7 @@ static enum rps t_should_relay_response( struct cell *Trans , int new_code,
 		   new branches bellow
 		*/
 		if (Trans->uas.status >= 200) {
+                        DBG("DEBUG: ==== 5 ====\n");
 			*should_store=0;
 			*should_relay=-1;
 			/* this might deserve an improvement -- if something
@@ -1402,6 +1415,11 @@ static enum rps t_should_relay_response( struct cell *Trans , int new_code,
 		}
 		/* look if the callback/failure_route introduced new branches ... */
 		if (branch_cnt<Trans->nr_of_outgoings){
+                        DBG("DEBUG: ==== 6 (branch_cnt: %d, nr_of_outgoings: %d) ====\n", branch_cnt, Trans->nr_of_outgoings);
+                	int iindex;
+                	for (iindex=0;iindex<Trans->nr_of_outgoings;iindex++) {
+                        	DBG("DEBUG: === outgoing %d: %.*s\n", iindex, Trans->uac[iindex].ruid.len, Trans->uac[iindex].ruid.s);
+                	}
 			/* the new branches might be already "finished" => we
 			 * must use t_pick_branch again */
 			new_branch=t_pick_branch((replies_dropped==0)?
@@ -1413,20 +1431,26 @@ static enum rps t_should_relay_response( struct cell *Trans , int new_code,
 						&picked_code);
 
 			if (new_branch<0){
+	                        DBG("DEBUG: ==== 7 ====\n");
 				if (likely(replies_dropped==0)) {
+					DBG("DEBUG: ==== 7.1 ====\n");
 					if (new_branch==-2) { /* branches open yet */
+	                                        DBG("DEBUG: ==== 7.1.1 ====\n");
 						*should_store=1;
 						*should_relay=-1;
 						return RPS_STORE;
 					}
 					/* error, use the old picked_branch */
 				} else {
+                                        DBG("DEBUG: ==== 7.2 ====\n");
 					if (new_branch==-2) { /* branches open yet */
+	                                        DBG("DEBUG: ==== 7.2.1 ====\n");
 						/* we are not allowed to relay the reply */
 						*should_store=0;
 						*should_relay=-1;
 						return RPS_DISCARDED;
 					} else {
+	                                        DBG("DEBUG: ==== 7.2.2 ====\n");
 						/* There are no open branches,
 						and all the newly created branches failed
 						as well. We are not allowed to send back
@@ -1436,16 +1460,18 @@ static enum rps t_should_relay_response( struct cell *Trans , int new_code,
 					}
 				}
 			}else{
+	                        DBG("DEBUG: ==== 8 ====\n");
 				/* found a new_branch */
 				picked_branch=new_branch;
 			}
 		} else if (unlikely(replies_dropped)) {
+                        DBG("DEBUG: ==== 9 ====\n");
 			/* Either the script writer did not add new branches
 			after calling t_drop_replies(), or tm was unable
 			to add the new branches to the transaction. */
 			goto branches_failed;
 		}
-
+                DBG("DEBUG: ==== 10 ====\n");
 		/* really no more pending branches -- return lowest code */
 		*should_store=0;
 		*should_relay=picked_branch;
@@ -1487,6 +1513,7 @@ discard:
 	return RPS_DISCARDED;
 
 branches_failed:
+        DBG("DEBUG: ==== branches_failed ====\n");
 	*should_store=0;
 	if (is_local(Trans)){
 		/* for local transactions use the current reply */

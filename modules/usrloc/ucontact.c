@@ -358,8 +358,11 @@ void st_update_ucontact(ucontact_t* _c)
  */
 int st_delete_ucontact(ucontact_t* _c)
 {
+        LM_DBG("_c: %p ruid: %.*s\n", _c, _c->ruid.len, _c->ruid.s);
+
 	switch(_c->state) {
 	case CS_NEW:
+		LM_DBG("CS_NEW\n");
 		     /* Contact is new and isn't in the database
 		      * yet, we can delete it from the memory
 		      * safely.
@@ -367,7 +370,9 @@ int st_delete_ucontact(ucontact_t* _c)
 		return 1;
 
 	case CS_SYNC:
+		LM_DBG("CS_SYNC\n");
 	case CS_DIRTY:
+		LM_DBG("CS_DIRTY\n");
 		     /* Contact is in the database,
 		      * we cannot remove it from the memory 
 		      * directly, but we can set expires to zero
@@ -376,6 +381,7 @@ int st_delete_ucontact(ucontact_t* _c)
 		      * from the database
 		      */
 		if (db_mode == WRITE_BACK) {
+			LM_DBG("db_mode WRITE_BACK expires (prev): %d UL_EXPIRED_TIME: %d\n", _c->expires, UL_EXPIRED_TIME);
 			_c->expires = UL_EXPIRED_TIME;
 			return 0;
 		} else {
@@ -1672,6 +1678,9 @@ static inline int update_contact_db(ucontact_t* _c)
  */
 int update_ucontact(struct urecord* _r, ucontact_t* _c, ucontact_info_t* _ci)
 {
+	LM_DBG("_c: %p _c.expires: %d _c.state: %d _c.ruid: %.*s\n",
+		_c, _c->expires, _c->state, _c->ruid.len, _c->ruid.s);
+
 	struct urecord _ur;
 	/* we have to update memory in any case, but database directly
 	 * only in db_mode 1 */

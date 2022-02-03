@@ -339,6 +339,36 @@ int append_branch(struct sip_msg* msg, str* uri, str* dst_uri, str* path,
 		  str* instance, unsigned int reg_id,
 		  str* ruid, str* location_ua)
 {
+	if (unlikely(ruid && ruid->len && ruid->s)) {
+		LM_DBG("ruid: %.*s\n", ruid->len, ruid->s);
+	}
+
+        if (unlikely(uri && uri->len && uri->s)) {
+                LM_DBG("uri: %.*s\n", uri->len, uri->s);
+        }
+
+        if (unlikely(dst_uri && dst_uri->len && dst_uri->s)) {
+                LM_DBG("dst_uri: %.*s\n", dst_uri->len, dst_uri->s);
+        }
+
+        if (unlikely(path && path->len && path->s)) {
+                LM_DBG("path: %.*s\n", path->len, path->s);
+        }
+
+        if (unlikely(instance && instance->len && instance->s)) {
+                LM_DBG("instance: %.*s\n", instance->len, instance->s);
+        }
+
+        if (unlikely(location_ua && location_ua->len && location_ua->s)) {
+                LM_DBG("location_ua: %.*s\n", location_ua->len, location_ua->s);
+        }
+
+	/* DEBUG - print the branches */
+	int i;
+        for (i=0; i<nr_branches; i++) {
+                LM_DBG("~~> branch %d: %.*s\n", i, branches[i].ruid_len, branches[i].ruid);
+        }
+
 	str luri;
 
 	/* if we have already set up the maximum number

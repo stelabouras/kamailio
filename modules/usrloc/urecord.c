@@ -149,6 +149,9 @@ ucontact_t* mem_insert_ucontact(urecord_t* _r, str* _c, ucontact_info_t* _ci)
 		LM_ERR("failed to create new contact\n");
 		return 0;
 	}
+
+	LM_DBG("ruid: %.*s user_agent: %.*s c: %.*s\n", c->ruid.len, c->ruid.s, c->user_agent.len, c->user_agent.s, _c->len, _c->s);
+
 	if_update_stat( _r->slot, _r->slot->d->contacts, 1);
 
 	ptr = _r->contacts;
@@ -363,6 +366,8 @@ static inline void wt_timer(urecord_t* _r)
  */
 static inline void wb_timer(urecord_t* _r)
 {
+	LM_DBG("->\n");
+
 	ucontact_t* ptr, *t;
 	cstate_t old_state;
 	int op;
@@ -371,12 +376,15 @@ static inline void wb_timer(urecord_t* _r)
 	ptr = _r->contacts;
 
 	while(ptr) {
+		LM_DBG("expires: %d act_time: %d UL_EXPIRED_TIME: %d\n", ptr->expires, act_time, UL_EXPIRED_TIME);
+
 		if (handle_lost_tcp && is_valid_tcpconn(ptr) && !is_tcp_alive(ptr)) {
 			LM_DBG("tcp connection has been lost, expiring contact %.*s\n", ptr->c.len, ptr->c.s);
 			ptr->expires = UL_EXPIRED_TIME;
 		}
 
 		if (!VALID_CONTACT(ptr, act_time)) {
+			LM_DBG("not a valid contact\n");
 			/* run callbacks for EXPIRE event */
 			if (exists_ulcb_type(UL_CONTACT_EXPIRE)) {
 				run_ul_callbacks( UL_CONTACT_EXPIRE, ptr);
@@ -405,6 +413,8 @@ static inline void wb_timer(urecord_t* _r)
 
 			mem_delete_ucontact(_r, t);
 		} else {
+			LM_DBG("Valid contact\n");
+
 			/* Determine the operation we have to do */
 			old_state = ptr->state;
 			op = st_flush_ucontact(ptr);
@@ -568,6 +578,8 @@ void release_urecord(urecord_t* _r)
 int insert_ucontact(urecord_t* _r, str* _contact, ucontact_info_t* _ci,
 															ucontact_t** _c)
 {
+	LM_DBG("-> _contact: %.*s ruid: %.*s db_mode: %d\n", _contact->len, _contact->s, _ci->ruid.len, _ci->ruid.s, db_mode);
+
 	struct urecord _ur;
 	if ( ((*_c)=mem_insert_ucontact(_r, _contact, _ci)) == 0) {
 		LM_ERR("failed to insert contact\n");
@@ -592,6 +604,7 @@ int insert_ucontact(urecord_t* _r, str* _contact, ucontact_info_t* _ci,
 
 	switch (db_mode) {
 		case WRITE_THROUGH:
+			LM_DBG("WRITE_THROUGH\n");
 			if (db_insert_ucontact(*_c) < 0) {
 				LM_ERR("failed to insert in database\n");
 				return -1;
@@ -600,6 +613,7 @@ int insert_ucontact(urecord_t* _r, str* _contact, ucontact_info_t* _ci,
 			}
 		break;
 		case DB_ONLY:
+			LM_DBG("DB_ONLY\n");
 			/* urecord was static restore copy */
 			memcpy(_r, &_ur, sizeof(struct urecord));
 		break;
@@ -617,15 +631,18 @@ int insert_ucontact(urecord_t* _r, str* _contact, ucontact_info_t* _ci,
  */
 int delete_ucontact(urecord_t* _r, struct ucontact* _c)
 {
+	LM_DBG("->\n");
 	int ret = 0;
 	struct urecord _ur;
 
 	if (db_mode==DB_ONLY) {
+		LM_DBG("db_mode==DB_ONLY\n");
 		/* urecord is static generate a copy for later */
 		memcpy(&_ur, _r, sizeof(struct urecord));
 	}
 
 	if (exists_ulcb_type(UL_CONTACT_DELETE)) {
+		LM_DBG("run_ul_callbacks\n");
 		run_ul_callbacks( UL_CONTACT_DELETE, _c);
 	}
 
@@ -635,16 +652,19 @@ int delete_ucontact(urecord_t* _r, struct ucontact* _c)
 	}
 
 	if (st_delete_ucontact(_c) > 0) {
+		LM_DBG("st_delete_ucontact >0\n");
 		if (db_mode == WRITE_THROUGH || db_mode==DB_ONLY) {
+			LM_DBG("about to call db_delete_ucontact\n");
 			if (db_delete_ucontact(_c) < 0) {
 				LM_ERR("failed to remove contact from database\n");
 				ret = -1;
 			}
 		}
 
+		LM_DBG("mem_delete_ucontact\n");
 		mem_delete_ucontact(_r, _c);
 	}
-
+	LM_DBG("<-\n");
 	return ret;
 }
 
@@ -763,6 +783,9 @@ static inline struct ucontact* contact_match_callidonly( ucontact_t* ptr, str* _
 int get_ucontact(urecord_t* _r, str* _c, str* _callid, str* _path, int _cseq,
 														struct ucontact** _co)
 {
+	LM_DBG("_c: %.*s _callid: %.*s _path: %.*s _cseq: %d\n",
+		_c->len, _c->s, _callid->len, _callid->s, _path->len, _path->s, _cseq);
+
 	ucontact_t* ptr;
 	int no_callid;
 
@@ -793,6 +816,7 @@ int get_ucontact(urecord_t* _r, str* _c, str* _callid, str* _path, int _cseq,
 		/* found -> check callid and cseq */
 		if ( no_callid || (ptr->callid.len==_callid->len
 		&& memcmp(_callid->s, ptr->callid.s, _callid->len)==0 ) ) {
+			LM_DBG("ptr->cseq: %d ptr->expires: %d\n", ptr->cseq, ptr->expires);
 			if (_cseq<ptr->cseq)
 				return -1;
 			if (_cseq==ptr->cseq) {

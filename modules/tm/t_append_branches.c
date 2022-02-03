@@ -120,9 +120,14 @@ int t_append_branches(void) {
 	/* DONE with faking ;-) -> run the failure handlers */
 	init_branch_iterator();
 
+	/* DEBUG - print the outgoing branches */
+	for (i=0; i<outgoings; i++) {
+		LM_DBG("outgoing branch %d: %.*s\n", i, t->uac[i].ruid.len, t->uac[i].ruid.s);
+	}
+
 	while((current_uri.s=next_branch( &current_uri.len, &q, &dst_uri, &path,
 										&bflags, &si, &ruid, &instance, &location_ua))) {
-		LM_DBG("Current uri %.*s\n",current_uri.len, current_uri.s);
+	        LM_DBG("Current uri %.*s -> ruid: %.*s\n",current_uri.len, current_uri.s, ruid.len, ruid.s);
 
 		found = 0;
 		for (i=0; i<outgoings; i++) {

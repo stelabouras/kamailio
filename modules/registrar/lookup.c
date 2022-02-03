@@ -395,7 +395,9 @@ int lookup_helper(struct sip_msg* _m, udomain_t* _d, str* _uri, int _mode)
 	if (!cfg_get(registrar, registrar_cfg, append_branches)) goto done;
 
 	for( ; ptr ; ptr = ptr->next ) {
+		LM_DBG("state: %d expires: %d ruid: %.*s\n", ptr->state, ptr->expires, ptr->ruid.len, ptr->ruid.s);
 		if (VALID_CONTACT(ptr, act_time) && allowed_method(_m, ptr)) {
+			LM_DBG("valid contact! ruid: %.*s\n", ptr->ruid.len, ptr->ruid.s);
 			path_dst.len = 0;
 			if(ptr->path.s && ptr->path.len) {
 				path_str = ptr->path;
@@ -452,6 +454,9 @@ int lookup_helper(struct sip_msg* _m, udomain_t* _d, str* _uri, int _mode)
 					goto done;
 				}
 			}
+		}
+		else {
+                        LM_DBG("INVALID contact! ruid: %.*s\n", ptr->ruid.len, ptr->ruid.s);
 		}
 	}
 

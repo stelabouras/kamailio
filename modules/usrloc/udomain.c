@@ -1130,8 +1130,10 @@ int get_urecord(udomain_t* _d, str* _aor, struct urecord** _r)
 {
 	unsigned int sl, i, aorhash;
 	urecord_t* r;
+	//ucontact_t* ptr = NULL;
 
 	if (db_mode!=DB_ONLY) {
+		LM_DBG("CACHE!\n");
 		/* search in cache */
 		aorhash = ul_get_aorhash(_aor);
 		sl = aorhash&(_d->size-1);
@@ -1140,6 +1142,11 @@ int get_urecord(udomain_t* _d, str* _aor, struct urecord** _r)
 		for(i = 0; r!=NULL && i < _d->table[sl].n; i++) {
 			if((r->aorhash==aorhash) && (r->aor.len==_aor->len)
 						&& !memcmp(r->aor.s,_aor->s,_aor->len)){
+	//			for (ptr = r->contacts;ptr;ptr = ptr->next) {
+	//				LM_DBG("CONTACT: expires: %d\n", ptr->expires);
+	//				if (ptr->expires == UL_EXPIRED_TIME)
+	//					continue;
+	//			}				
 				*_r = r;
 				return 0;
 			}
@@ -1147,6 +1154,7 @@ int get_urecord(udomain_t* _d, str* _aor, struct urecord** _r)
 			r = r->next;
 		}
 	} else {
+		LM_DBG("DB!\n");
 		/* search in DB */
 		r = db_load_urecord( ul_dbh, _d, _aor);
 		if (r) {

@@ -2424,6 +2424,13 @@ try_again:
 		 * to try to resovle ipv6 addresses */
 		default_core_cfg.dns_try_ipv6=0;
 	}
+        /* TMP: Test custom log messages */
+        printf("Logging with super SC powers.\n");
+        LM_ERR("Logging at error level test.\n");
+        LM_INFO("Logging at info level test.\n");
+        LM_DBG("Logging at debug level test.\n");
+        DBG("Logging at DBG only test.\n");
+
 	/* print all the listen addresses */
 	printf("Listening on \n");
 	print_all_socket_lists();

@@ -218,7 +218,10 @@ int build_contact(sip_msg_t *msg, ucontact_t* c, str *host)
 
 	fl = 0;
 	while(c) {
+		LM_DBG("c: %p c.state: %d c.expires: %d c.ruid: %.*s\n", c, c->state, c->expires, c->ruid.len, c->ruid.s);
+
 		if (VALID_CONTACT(c, act_time)) {
+			LM_DBG("Valid contact!\n");
 			if (fl) {
 				memcpy(p, CONTACT_SEP, CONTACT_SEP_LEN);
 				p += CONTACT_SEP_LEN;
@@ -339,6 +342,9 @@ int build_contact(sip_msg_t *msg, ucontact_t* c, str *host)
 					LM_ERR("cannot add ruid value to xavp\n");
 				}
 			}
+		}
+		else {
+			LM_DBG("NOT VALID!\n");
 		}
 
 		c = c->next;

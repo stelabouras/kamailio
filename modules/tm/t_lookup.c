@@ -1025,7 +1025,7 @@ int t_check_msg( struct sip_msg* p_msg , int *param_branch )
 	
 	ret=0;
 	/* is T still up-to-date ? */
-	DBG("DEBUG: t_check_msg: msg id=%d global id=%d T start=%p\n", 
+	LM_WARN("SCDEBUG: t_check_msg: msg id=%d global id=%d T start=%p\n",
 		p_msg->id,global_msg_id,T);
 	if ( p_msg->id != global_msg_id || T==T_UNDEFINED )
 	{
@@ -1099,6 +1099,12 @@ int t_check_msg( struct sip_msg* p_msg , int *param_branch )
 	} else { /*  ( p_msg->id == global_msg_id && T!=T_UNDEFINED ) */
 		if (T){
 			DBG("DEBUG: t_check_msg: T already found!\n");
+			        /* DEBUG - print the outgoing branches */
+			int i;
+        		for (i=0; i<T->nr_of_outgoings; i++) {
+                		LM_DBG("outgoing branch %d: %.*s\n", i, T->uac[i].ruid.len, T->uac[i].ruid.s);
+        		}
+
 			ret=1;
 		}else{
 			DBG("DEBUG: t_check_msg: T previously sought and not found\n");
